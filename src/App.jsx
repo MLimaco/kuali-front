@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { CompanyList } from './components/CompanyList.jsx'
 import { UserList } from './components/UserList.jsx';
-import { LeadList } from './components/LeadList.jsx';
+import { LeadsPage } from './pages/leadsPage.jsx';
 import { ContactLogList } from './components/ContactLogList.jsx';
 import { TemplateList } from './components/TemplateList.jsx';
 
@@ -19,7 +19,7 @@ function App() {
           } />
           <Route path="/companies" element={<CompanyList />} />
           <Route path="/users" element={<UserList />} />
-          <Route path="/leads" element={<LeadList />} />
+          <Route path="/leads" element={<LeadsPage />} />
           <Route path="/logs" element={<ContactLogList />} />
           <Route path="/templates" element={<TemplateList />} />
           <Route path="*" element={<Navigate to="/" />} />
