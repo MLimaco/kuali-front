@@ -33,8 +33,8 @@ export const ContactLogList = () => {
                     <h3>Tipo: {log.type}</h3>
                     <p>Status: {log.status}</p>
                     <p>Notas: {log.notes || 'N/A'}</p>
-                    <p>Fecha programada: {log.scheduleDates ? new Date(log.scheduleDates).toLocaleString() : 'N/A'}</p>
-                    <p>Creado: {new Date(log.createAt).toLocaleString()}</p>
+                    <p>Creado: {log.createAt ? new Date(log.createAt).toLocaleString() : 'N/A'}</p>
+                    <p>Última actualización: {log.updatedAt ? new Date(log.updatedAt).toLocaleString() : 'N/A'}</p>
                     <p>Lead ID: {log.leadID}</p>
                     <p>Usuario ID: {log.userID}</p>
                     <p>Compañía ID: {log.companyID}</p>

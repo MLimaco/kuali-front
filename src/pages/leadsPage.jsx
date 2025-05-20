@@ -1,23 +1,23 @@
 import { useState, useEffect } from 'react';
 import { leadsService } from '../services/leads.js';
-import { logsService } from '../services/logsService.js'; // Servicio para obtener logs por lead
-import { companiesService } from '../services/companies.js'; // <-- NUEVO IMPORT
-
+import { logsService } from '../services/logsService.js';
+import { companiesService } from '../services/companies.js';
 
 export const LeadsPage = () => {
-    // Estado para la lista de leads
     const [leads, setLeads] = useState([]);
-    // Estado para el lead seleccionado
     const [selectedLead, setSelectedLead] = useState(null);
-    // Estado para los logs del lead seleccionado
     const [logs, setLogs] = useState([]);
-    // Estado de carga para leads y logs
     const [loadingLeads, setLoadingLeads] = useState(true);
     const [loadingLogs, setLoadingLogs] = useState(false);
-    const [companies, setCompanies] = useState([]); // <-- NUEVO
-    const [selectedCompanyId, setSelectedCompanyId] = useState(''); // <-- NUEVO
+    const [companies, setCompanies] = useState([]);
+    const [selectedCompanyId, setSelectedCompanyId] = useState('');
 
-    // Al montar el componente, trae la lista de leads
+    // --- NUEVO: Estados para historial de cambios de logs ---
+    const [history, setHistory] = useState([]);
+    const [showHistoryFor, setShowHistoryFor] = useState(null);
+    const [loadingHistory, setLoadingHistory] = useState(false);
+
+    // Al montar, trae leads, companies y todos los logs
     useEffect(() => {
         const fetchLeads = async () => {
             setLoadingLeads(true);
@@ -29,22 +29,31 @@ export const LeadsPage = () => {
             const response = await companiesService.getAllCompanies();
             setCompanies(response);
         };
+        const fetchAllLogs = async () => {
+            setLoadingLogs(true);
+            const response = await logsService.getAllLogs(); // Debes tener este método en logsService
+            setLogs(response);
+            setLoadingLogs(false);
+        };
         fetchLeads();
-        fetchCompanies(); // <-- NUEVO
+        fetchCompanies();
+        fetchAllLogs();
     }, []);
 
-    // Cuando el usuario hace clic en un lead, trae sus logs
+    // Al seleccionar un lead, trae solo sus logs
     const handleLeadClick = async (lead) => {
-        // Si ya está seleccionado, deselecciona y oculta detalles
         if (selectedLead && selectedLead.id === lead.id) {
             setSelectedLead(null);
-            setLogs([]);
+            setLoadingLogs(true);
+            const response = await logsService.getAllLogs();
+            setLogs(response);
+            setLoadingLogs(false);
             return;
         }
-        setSelectedLead(lead); // Marca el lead como seleccionado
+        setSelectedLead(lead);
         setLoadingLogs(true);
-        const response = await logsService.getLogsByLeadId(lead.id); // Pide los logs de ese lead
-        setLogs(response); // Guarda los logs en el estado
+        const response = await logsService.getLogsByLeadId(lead.id);
+        setLogs(response);
         setLoadingLogs(false);
     };
 
@@ -52,6 +61,26 @@ export const LeadsPage = () => {
         ? leads.filter(lead => String(lead.companyID) === selectedCompanyId)
         : leads;
 
+    // --- NUEVO: Función para cargar historial de un log ---
+    const handleShowHistory = async (contactLogID) => {
+        // Si ya está abierto, colapsa
+        if (showHistoryFor === contactLogID) {
+            setShowHistoryFor(null);
+            setHistory([]);
+            return;
+        }
+        setShowHistoryFor(contactLogID);
+        setLoadingHistory(true);
+        try {
+            const response = await fetch(`http://localhost:3000/api/logsHistory/${contactLogID}`);
+            const data = await response.json();
+            setHistory(data);
+        } catch (err) {
+            setHistory([{ error: 'Error al cargar el historial.' }]);
+        } finally {
+            setLoadingHistory(false);
+        }
+    };
 
     return (
         <div style={{ display: 'flex', height: '100vh' }}>
@@ -73,7 +102,6 @@ export const LeadsPage = () => {
                     </select>
                 </div>
                 <h2>Leads</h2>
-                {/* Muestra mensaje de carga o la lista de leads */}
                 {loadingLeads ? <div>Cargando leads...</div> : (
                     filteredLeads.map(lead => (
                         <div
@@ -88,7 +116,6 @@ export const LeadsPage = () => {
                             }}
                             onClick={() => handleLeadClick(lead)}
                         >
-                            {/* Compacto: nombre y rol */}
                             <strong>{lead.firstName} {lead.lastName}</strong>
                             <div>{lead.rol || 'Sin rol'}</div>
                             <div>
@@ -96,7 +123,6 @@ export const LeadsPage = () => {
                                     {companies.find(c => c.id === lead.companyID)?.name || 'Sin empresa'}
                                 </strong>
                             </div>
-                            {/* Si está seleccionado, muestra detalles */}
                             {selectedLead?.id === lead.id && (
                                 <div style={{ marginTop: '1em', fontSize: '0.95em' }}>
                                     <div><strong>Teléfono:</strong> {lead.phone || 'N/A'}</div>
@@ -117,25 +143,51 @@ export const LeadsPage = () => {
 
             {/* Columna derecha: Logs */}
             <div style={{ width: '60%', padding: '1em', background: '#17607b22', overflowY: 'auto' }}>
-                {selectedLead ? (
-                    <>
-                        <h2>Logs de {selectedLead.firstName} {selectedLead.lastName}</h2>
-                        {/* Muestra mensaje de carga o los logs */}
-                        {loadingLogs ? <div>Cargando logs...</div> : (
-                            logs.length === 0
-                                ? <div>No hay logs para este lead.</div>
-                                : logs.map(log => (
-                                    <div key={log.id} style={{ border: '1px solid #aaa', borderRadius: '8px', margin: '1em 0', padding: '1em', background: '#fff' }}>
-                                        <strong>Tipo:</strong> {log.type} <br />
-                                        <strong>Status:</strong> {log.status} <br />
-                                        <strong>Nota:</strong> {log.notes || 'N/A'} <br />
-                                        <strong>Fecha programada:</strong> {log.scheduleDates ? new Date(log.scheduleDates).toLocaleString() : 'N/A'}
+                {!selectedLead && (
+                    <div style={{ marginBottom: '1em', fontStyle: 'italic' }}>
+                        Selecciona un lead para filtrar sus logs.
+                    </div>
+                )}
+                {loadingLogs ? <div>Cargando logs...</div> : (
+                    logs.length === 0
+                        ? <div>No hay logs para mostrar.</div>
+                        : logs.map(log => (
+                            <div key={log.id} style={{ border: '1px solid #aaa', borderRadius: '8px', margin: '1em 0', padding: '1em', background: '#fff' }}>
+                                <strong>Tipo:</strong> {log.type} <br />
+                                <strong>Status:</strong> {log.status} <br />
+                                <strong>Nota:</strong> {log.notes || 'N/A'} <br />
+                                <strong>Fecha de creación:</strong> {log.createAt ? new Date(log.createAt).toLocaleString() : 'N/A'} <br />
+                                <strong>Última actualización:</strong> {log.updatedAt ? new Date(log.updatedAt).toLocaleString() : 'N/A'} <br />
+                                {/* --- NUEVO: Botón para ver historial --- */}
+                                <button
+                                    style={{ marginTop: '0.5em', marginBottom: '0.5em' }}
+                                    onClick={() => handleShowHistory(log.id)}
+                                >
+                                    {showHistoryFor === log.id ? 'Ocultar historial' : 'Ver historial'}
+                                </button>
+                                {/* --- NUEVO: Desplegable de historial --- */}
+                                {showHistoryFor === log.id && (
+                                    <div style={{ marginTop: '0.5em', background: '#f5f5f5', padding: '0.5em', borderRadius: '6px' }}>
+                                        {loadingHistory ? (
+                                            <div>Cargando historial...</div>
+                                        ) : (
+                                            history.length === 0
+                                                ? <div>No hay historial para este log.</div>
+                                                : history[0]?.error
+                                                    ? <div>{history[0].error}</div>
+                                                    : history.map(item => (
+                                                        <div key={item.id} style={{ borderBottom: '1px solid #ccc', marginBottom: '0.5em', paddingBottom: '0.5em' }}>
+                                                            <strong>Status:</strong> {item.status} <br />
+                                                            <strong>Nota:</strong> {item.notes || 'N/A'} <br />
+                                                            <strong>Usuario ID:</strong> {item.userID} <br />
+                                                            <strong>Fecha de cambio:</strong> {item.changedAt ? new Date(item.changedAt).toLocaleString() : 'N/A'} <br />
+                                                        </div>
+                                                    ))
+                                        )}
                                     </div>
-                                ))
-                        )}
-                    </>
-                ) : (
-                    <div>Selecciona un lead para ver sus logs.</div>
+                                )}
+                            </div>
+                        ))
                 )}
             </div>
         </div>
