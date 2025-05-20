@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { leadsService } from '../services/leads.js';
 import { logsService } from '../services/logsService.js'; // Servicio para obtener logs por lead
+import { companiesService } from '../services/companies.js'; // <-- NUEVO IMPORT
+
 
 export const LeadsPage = () => {
     // Estado para la lista de leads
@@ -12,16 +14,23 @@ export const LeadsPage = () => {
     // Estado de carga para leads y logs
     const [loadingLeads, setLoadingLeads] = useState(true);
     const [loadingLogs, setLoadingLogs] = useState(false);
+    const [companies, setCompanies] = useState([]); // <-- NUEVO
+    const [selectedCompanyId, setSelectedCompanyId] = useState(''); // <-- NUEVO
 
     // Al montar el componente, trae la lista de leads
     useEffect(() => {
         const fetchLeads = async () => {
             setLoadingLeads(true);
             const response = await leadsService.getAllLeads();
-            setLeads(response); // Guarda los leads en el estado
+            setLeads(response);
             setLoadingLeads(false);
         };
+        const fetchCompanies = async () => {
+            const response = await companiesService.getAllCompanies();
+            setCompanies(response);
+        };
         fetchLeads();
+        fetchCompanies(); // <-- NUEVO
     }, []);
 
     // Cuando el usuario hace clic en un lead, trae sus logs
@@ -39,14 +48,34 @@ export const LeadsPage = () => {
         setLoadingLogs(false);
     };
 
+    const filteredLeads = selectedCompanyId
+        ? leads.filter(lead => String(lead.companyID) === selectedCompanyId)
+        : leads;
+
+
     return (
         <div style={{ display: 'flex', height: '100vh' }}>
             {/* Columna izquierda: Leads */}
             <div style={{ width: '40%', borderRight: '1px solid #ccc', padding: '1em', overflowY: 'auto' }}>
+                {/* Filtro de empresas */}
+                <div style={{ marginBottom: '1em' }}>
+                    <label>Filtrar por empresa: </label>
+                    <select
+                        value={selectedCompanyId}
+                        onChange={e => setSelectedCompanyId(e.target.value)}
+                    >
+                        <option value="">Todas</option>
+                        {companies.map(company => (
+                            <option key={company.id} value={company.id}>
+                                {company.name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
                 <h2>Leads</h2>
                 {/* Muestra mensaje de carga o la lista de leads */}
                 {loadingLeads ? <div>Cargando leads...</div> : (
-                    leads.map(lead => (
+                    filteredLeads.map(lead => (
                         <div
                             key={lead.id}
                             style={{
@@ -62,6 +91,11 @@ export const LeadsPage = () => {
                             {/* Compacto: nombre y rol */}
                             <strong>{lead.firstName} {lead.lastName}</strong>
                             <div>{lead.rol || 'Sin rol'}</div>
+                            <div>
+                                <strong>
+                                    {companies.find(c => c.id === lead.companyID)?.name || 'Sin empresa'}
+                                </strong>
+                            </div>
                             {/* Si está seleccionado, muestra detalles */}
                             {selectedLead?.id === lead.id && (
                                 <div style={{ marginTop: '1em', fontSize: '0.95em' }}>
