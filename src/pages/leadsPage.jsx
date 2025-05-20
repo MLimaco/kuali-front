@@ -3,6 +3,12 @@ import { leadsService } from '../services/leads.js';
 import { logsService } from '../services/logsService.js';
 import { companiesService } from '../services/companies.js';
 
+// Servicio para obtener usuarios
+const fetchUsers = async () => {
+    const response = await fetch('http://localhost:3000/api/users');
+    return await response.json();
+};
+
 export const LeadsPage = () => {
     const [leads, setLeads] = useState([]);
     const [selectedLead, setSelectedLead] = useState(null);
@@ -11,13 +17,32 @@ export const LeadsPage = () => {
     const [loadingLogs, setLoadingLogs] = useState(false);
     const [companies, setCompanies] = useState([]);
     const [selectedCompanyId, setSelectedCompanyId] = useState('');
+    const [users, setUsers] = useState([]);
 
     // --- NUEVO: Estados para historial de cambios de logs ---
     const [history, setHistory] = useState([]);
     const [showHistoryFor, setShowHistoryFor] = useState(null);
     const [loadingHistory, setLoadingHistory] = useState(false);
 
-    // Al montar, trae leads, companies y todos los logs
+    // --- NUEVO: Estados para modal y formulario de agregar lead ---
+    const [showModal, setShowModal] = useState(false);
+    const [form, setForm] = useState({
+        firstName: '',
+        lastName: '',
+        companyID: '',
+        ownerID: '',
+        mail: '',
+        phone: '',
+        linkedinProfile: '',
+        rol: '',
+        senority: '',
+        area: ''
+        // nextStep y status se asumen como null y no se muestran en el formulario
+    });
+    const [formError, setFormError] = useState('');
+    const [formSuccess, setFormSuccess] = useState(''); // Mensaje de éxito
+
+    // Al montar, trae leads, companies, logs y users
     useEffect(() => {
         const fetchLeads = async () => {
             setLoadingLeads(true);
@@ -31,13 +56,18 @@ export const LeadsPage = () => {
         };
         const fetchAllLogs = async () => {
             setLoadingLogs(true);
-            const response = await logsService.getAllLogs(); // Debes tener este método en logsService
+            const response = await logsService.getAllLogs();
             setLogs(response);
             setLoadingLogs(false);
+        };
+        const loadUsers = async () => {
+            const data = await fetchUsers();
+            setUsers(data);
         };
         fetchLeads();
         fetchCompanies();
         fetchAllLogs();
+        loadUsers();
     }, []);
 
     // Al seleccionar un lead, trae solo sus logs
@@ -63,7 +93,6 @@ export const LeadsPage = () => {
 
     // --- NUEVO: Función para cargar historial de un log ---
     const handleShowHistory = async (contactLogID) => {
-        // Si ya está abierto, colapsa
         if (showHistoryFor === contactLogID) {
             setShowHistoryFor(null);
             setHistory([]);
@@ -82,24 +111,96 @@ export const LeadsPage = () => {
         }
     };
 
+    // --- NUEVO: Handlers para el modal de agregar lead ---
+    const handleOpenModal = () => {
+        setForm({
+            firstName: '',
+            lastName: '',
+            companyID: '',
+            ownerID: '',
+            mail: '',
+            phone: '',
+            linkedinProfile: '',
+            rol: '',
+            senority: '',
+            area: ''
+            // nextStep y status se asumen como null y no se muestran en el formulario
+        });
+        setFormError('');
+        setFormSuccess('');
+        setShowModal(true);
+    };
+
+    const handleCloseModal = () => {
+        setShowModal(false);
+        setFormError('');
+        setFormSuccess('');
+    };
+
+    const handleFormChange = (e) => {
+        const { name, value } = e.target;
+        setForm(prev => ({ ...prev, [name]: value }));
+    };
+
+const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    setFormError('');
+    setFormSuccess('');
+    if (!form.firstName || !form.lastName || !form.companyID || !form.ownerID) {
+        setFormError('Faltan datos obligatorios: Nombre, Apellido, Empresa y Dueño.');
+        return;
+    }
+    try {
+        // Convierte companyID y ownerID a número
+        const response = await leadsService.createLead({
+            ...form,
+            companyID: Number(form.companyID),
+            ownerID: Number(form.ownerID),
+            nextStep: null,
+            status: null
+        });
+        if (response.ok || response.status === 201) {
+            setFormSuccess('Lead creado exitosamente.');
+            setFormError('');
+            setShowModal(false);
+            setLoadingLeads(true);
+            const leadsResp = await leadsService.getAllLeads();
+            setLeads(leadsResp);
+            setLoadingLeads(false);
+        } else {
+            setFormError('Error al crear el lead.');
+            setFormSuccess('');
+        }
+    } catch (err) {
+        setFormError('Error al crear el lead.');
+        setFormSuccess('');
+    }
+};
+
     return (
         <div style={{ display: 'flex', height: '100vh' }}>
             {/* Columna izquierda: Leads */}
             <div style={{ width: '40%', borderRight: '1px solid #ccc', padding: '1em', overflowY: 'auto' }}>
                 {/* Filtro de empresas */}
-                <div style={{ marginBottom: '1em' }}>
-                    <label>Filtrar por empresa: </label>
-                    <select
-                        value={selectedCompanyId}
-                        onChange={e => setSelectedCompanyId(e.target.value)}
-                    >
-                        <option value="">Todas</option>
-                        {companies.map(company => (
-                            <option key={company.id} value={company.id}>
-                                {company.name}
-                            </option>
-                        ))}
-                    </select>
+                <div style={{ marginBottom: '1em', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                        <label>Filtrar por empresa: </label>
+                        <select
+                            value={selectedCompanyId}
+                            onChange={e => setSelectedCompanyId(e.target.value)}
+                        >
+                            <option value="">Todas</option>
+                            {companies.map(company => (
+                                <option key={company.id} value={company.id}>
+                                    {company.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    {/* --- NUEVO: Botón para abrir modal de agregar lead --- */}
+                    <button onClick={handleOpenModal} style={{ marginLeft: '1em', padding: '0.5em 1em' }}>
+                        + Agregar Lead
+                    </button>
                 </div>
                 <h2>Leads</h2>
                 {loadingLeads ? <div>Cargando leads...</div> : (
@@ -139,6 +240,77 @@ export const LeadsPage = () => {
                         </div>
                     ))
                 )}
+                {/* --- NUEVO: Modal para agregar lead --- */}
+                {showModal && (
+                    <div style={{
+                        position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+                        background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+                    }}>
+                        <div style={{ background: '#fff', padding: '2em', borderRadius: '10px', minWidth: '350px', maxWidth: '90vw' }}>
+                            <h3>Agregar Lead</h3>
+                            <form onSubmit={handleFormSubmit}>
+                                <div>
+                                    <label>Nombre*:</label>
+                                    <input name="firstName" value={form.firstName} onChange={handleFormChange} required />
+                                </div>
+                                <div>
+                                    <label>Apellido*:</label>
+                                    <input name="lastName" value={form.lastName} onChange={handleFormChange} required />
+                                </div>
+                                <div>
+                                    <label>Empresa*:</label>
+                                    <select name="companyID" value={form.companyID} onChange={handleFormChange} required>
+                                        <option value="">Selecciona una empresa</option>
+                                        {companies.map(company => (
+                                            <option key={company.id} value={company.id}>{company.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label>Dueño*:</label>
+                                    <select name="ownerID" value={form.ownerID} onChange={handleFormChange} required>
+                                        <option value="">Selecciona un usuario</option>
+                                        {users.map(user => (
+                                            <option key={user.id} value={user.id}>{user.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label>Correo:</label>
+                                    <input name="mail" value={form.mail} onChange={handleFormChange} />
+                                </div>
+                                <div>
+                                    <label>Teléfono:</label>
+                                    <input name="phone" value={form.phone} onChange={handleFormChange} />
+                                </div>
+                                <div>
+                                    <label>LinkedIn:</label>
+                                    <input name="linkedinProfile" value={form.linkedinProfile} onChange={handleFormChange} />
+                                </div>
+                                <div>
+                                    <label>Rol:</label>
+                                    <input name="rol" value={form.rol} onChange={handleFormChange} />
+                                </div>
+                                <div>
+                                    <label>Seniority:</label>
+                                    <input name="senority" value={form.senority} onChange={handleFormChange} />
+                                </div>
+                                <div>
+                                    <label>Área:</label>
+                                    <input name="area" value={form.area} onChange={handleFormChange} />
+                                </div>
+                                {/* Mensaje de error */}
+                                {formError && <div style={{ color: 'red', marginTop: '0.5em' }}>{formError}</div>}
+                                {/* Mensaje de éxito */}
+                                {formSuccess && <div style={{ color: 'green', marginTop: '0.5em' }}>{formSuccess}</div>}
+                                <div style={{ marginTop: '1em', display: 'flex', justifyContent: 'flex-end' }}>
+                                    <button type="button" onClick={handleCloseModal} style={{ marginRight: '1em' }}>Cancelar</button>
+                                    <button type="submit">Guardar</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Columna derecha: Logs */}
@@ -158,14 +330,12 @@ export const LeadsPage = () => {
                                 <strong>Nota:</strong> {log.notes || 'N/A'} <br />
                                 <strong>Fecha de creación:</strong> {log.createAt ? new Date(log.createAt).toLocaleString() : 'N/A'} <br />
                                 <strong>Última actualización:</strong> {log.updatedAt ? new Date(log.updatedAt).toLocaleString() : 'N/A'} <br />
-                                {/* --- NUEVO: Botón para ver historial --- */}
                                 <button
                                     style={{ marginTop: '0.5em', marginBottom: '0.5em' }}
                                     onClick={() => handleShowHistory(log.id)}
                                 >
                                     {showHistoryFor === log.id ? 'Ocultar historial' : 'Ver historial'}
                                 </button>
-                                {/* --- NUEVO: Desplegable de historial --- */}
                                 {showHistoryFor === log.id && (
                                     <div style={{ marginTop: '0.5em', background: '#f5f5f5', padding: '0.5em', borderRadius: '6px' }}>
                                         {loadingHistory ? (
