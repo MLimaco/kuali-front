@@ -1,5 +1,8 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
+/* Estilos base para inputs y selects */
 input.kuali-input,
 select.kuali-input {
   width: 100%;
@@ -19,4 +22,27 @@ input.kuali-input:focus,
 select.kuali-input:focus {
   border-color: #17607b !important;
   outline: none !important;
+}
+
+/* Estilos para estados de logs basados en tu schema */
+.log-status-success {
+  color: #16a34a;
+  background-color: #dcfce7;
+}
+
+.log-status-pending {
+  color: #ca8a04;
+  background-color: #fef9c3;
+}
+
+.log-status-rejected {
+  color: #dc2626;
+  background-color: #fee2e2;
+}
+
+/* Estilos para el historial de logs */
+.log-history-item {
+  border-left: 3px solid #17607b;
+  padding-left: 1em;
+  margin: 0.5em 0;
 }

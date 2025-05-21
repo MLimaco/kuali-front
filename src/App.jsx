@@ -15,6 +15,7 @@ function App() {
             <div className="home-container">
               <h1>Welcome to Company Management</h1>
               <p>Navigate to companies to see the list</p>
+              <div className="bg-red-500 text-white p-4">Test Tailwind</div>
             </div>
           } />
           <Route path="/companies" element={<CompanyList />} />
