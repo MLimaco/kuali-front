@@ -1,1 +1,22 @@
 @import "tailwindcss";
+
+input.kuali-input,
+select.kuali-input {
+  width: 100%;
+  padding: 0.5em;
+  margin: 0.2em 0 1em 0;
+  border-width: 1.5px !important;
+  border-style: solid !important;
+  border-color: #17607b !important;
+  border-radius: 5px !important;
+  font-size: 1em;
+  box-sizing: border-box;
+  background: #f8fafc;
+  transition: border-color 0.2s;
+}
+
+input.kuali-input:focus,
+select.kuali-input:focus {
+  border-color: #17607b !important;
+  outline: none !important;
+}
