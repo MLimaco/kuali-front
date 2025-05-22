@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { CompanyList } from './components/CompanyList.jsx'
 import { UserList } from './components/UserList.jsx';
-import { LeadsPage } from './pages/leadsPage.jsx';
+import { LeadsPage } from './pages/LeadsPage.jsx';
 import { ContactLogList } from './components/ContactLogList.jsx';
 import { TemplateList } from './components/TemplateList.jsx';
 

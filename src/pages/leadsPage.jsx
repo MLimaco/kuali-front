@@ -336,6 +336,36 @@ export const LeadsPage = () => {
 
             {/* Columna derecha: Logs */}
             <div style={{ width: '60%', padding: '1em', background: '#17607b22', overflowY: 'auto' }}>
+                {/* Cabecera sticky */}
+                <div
+                    style={{
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 10,
+                        backgroundColor: '#17607b',
+                        color: 'white',
+                        padding: '0.75em 1em',
+                        borderRadius: '6px',
+                        marginBottom: '1em',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                    }}
+                >
+                    <div style={{ fontWeight: 'bold', fontSize: '1.1em' }}>
+                        {selectedLead
+                            ? `Contacto: ${selectedLead.firstName} ${selectedLead.lastName}`
+                            : 'Elige un contacto'
+                        }
+                    </div>
+                    {selectedLead && (
+                        <div style={{ fontSize: '0.9em' }}>
+                            {companies.find(c => c.id === selectedLead.companyID)?.name || 'Sin empresa'}
+                        </div>
+                    )}
+                </div>
+
                 {/* Botón para agregar log */}
                 {selectedLead && (
                     <div style={{ marginBottom: '1em' }}>
@@ -347,16 +377,17 @@ export const LeadsPage = () => {
                         </button>
                     </div>
                 )}
-                
+
                 {/* Gráfico de logs por tipo */}
                 <div style={{ marginBottom: '2em' }}>
                     {!loadingLogs && (
-                        <LogsChart 
+                        <LogsChart
                             logs={logs}
                             selectedLead={selectedLead}
                         />
                     )}
                 </div>
+
 
                 {/* Modal para agregar log */}
                 <LogFormModal
@@ -371,7 +402,7 @@ export const LeadsPage = () => {
                         Selecciona un lead para filtrar sus logs.
                     </div>
                 )}
-                
+
                 {/* Lista de logs con edición */}
                 {loadingLogs ? <div>Cargando logs...</div> : (
                     <ContactLogList

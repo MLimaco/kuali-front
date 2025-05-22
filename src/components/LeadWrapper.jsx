@@ -1,9 +1,9 @@
 // Página principal que orquesta los componentes y el hook de lógica
 import { useState } from 'react';
 import { useLeads } from '../hooks/useLeads';
-import LeadsList from '../components/LeadsList';
-import LeadFormModal from '../components/LeadFormModal';
-import LogsList from '../components/LogsList';
+import { LeadList } from './LeadList'; // Cambiado: importa LeadList desde el archivo correcto
+import LeadFormModal from './LeadFormModal';
+import LogsList from './LogsList';
 
 export const LeadsPage = () => {
     // Usa el hook para obtener datos y funciones
@@ -26,7 +26,7 @@ export const LeadsPage = () => {
     return (
         <div style={{ display: 'flex', height: '100vh' }}>
             <div style={{ width: '40%' }}>
-                <LeadsList
+                <LeadList // Cambiado: usa LeadList en lugar de LeadsList
                     leads={leads}
                     companies={companies}
                     loading={loadingLeads}
