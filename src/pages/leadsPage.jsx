@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react';
 import { leadsService } from '../services/leads.js';
 import { logsService } from '../services/logsService.js';
 import { companiesService } from '../services/companies.js';
+// Importa el modal para agregar logs
+import LogFormModal from '../components/LogFormModal.jsx';
+// Importa la lista de logs con edición
+import { ContactLogList } from '../components/ContactLogList.jsx';
 
 // Servicio para obtener usuarios
 const fetchUsers = async () => {
@@ -19,12 +23,15 @@ export const LeadsPage = () => {
     const [selectedCompanyId, setSelectedCompanyId] = useState('');
     const [users, setUsers] = useState([]);
 
-    // --- NUEVO: Estados para historial de cambios de logs ---
+    // --- Estados para historial de cambios de logs ---
     const [history, setHistory] = useState([]);
     const [showHistoryFor, setShowHistoryFor] = useState(null);
     const [loadingHistory, setLoadingHistory] = useState(false);
 
-    // --- NUEVO: Estados para modal y formulario de agregar lead ---
+    // --- Estado para modal de agregar log ---
+    const [showLogModal, setShowLogModal] = useState(false);
+
+    // --- Estados para modal y formulario de agregar lead ---
     const [showModal, setShowModal] = useState(false);
     const [form, setForm] = useState({
         firstName: '',
@@ -41,6 +48,10 @@ export const LeadsPage = () => {
     });
     const [formError, setFormError] = useState('');
     const [formSuccess, setFormSuccess] = useState(''); // Mensaje de éxito
+
+    // --- Estado para el usuario actual (para edición de logs) ---
+    // Puedes obtener este dato de tu contexto de autenticación si lo tienes
+    const userID = 1; // <-- Cambia esto por el ID real del usuario logueado
 
     // Al montar, trae leads, companies, logs y users
     useEffect(() => {
@@ -91,7 +102,7 @@ export const LeadsPage = () => {
         ? leads.filter(lead => String(lead.companyID) === selectedCompanyId)
         : leads;
 
-    // --- NUEVO: Función para cargar historial de un log ---
+    // --- Función para cargar historial de un log ---
     const handleShowHistory = async (contactLogID) => {
         if (showHistoryFor === contactLogID) {
             setShowHistoryFor(null);
@@ -111,7 +122,7 @@ export const LeadsPage = () => {
         }
     };
 
-    // --- NUEVO: Handlers para el modal de agregar lead ---
+    // --- Handlers para el modal de agregar lead ---
     const handleOpenModal = () => {
         setForm({
             firstName: '',
@@ -124,7 +135,6 @@ export const LeadsPage = () => {
             rol: '',
             senority: '',
             area: ''
-            // nextStep y status se asumen como null y no se muestran en el formulario
         });
         setFormError('');
         setFormSuccess('');
@@ -142,40 +152,49 @@ export const LeadsPage = () => {
         setForm(prev => ({ ...prev, [name]: value }));
     };
 
-const handleFormSubmit = async (e) => {
-    e.preventDefault();
-    setFormError('');
-    setFormSuccess('');
-    if (!form.firstName || !form.lastName || !form.companyID || !form.ownerID) {
-        setFormError('Faltan datos obligatorios: Nombre, Apellido, Empresa y Dueño.');
-        return;
-    }
-    try {
-        // Convierte companyID y ownerID a número
-        const response = await leadsService.createLead({
-            ...form,
-            companyID: Number(form.companyID),
-            ownerID: Number(form.ownerID),
-            nextStep: null,
-            status: null
-        });
-        if (response.ok || response.status === 201) {
-            setFormSuccess('Lead creado exitosamente.');
-            setFormError('');
-            setShowModal(false);
-            setLoadingLeads(true);
-            const leadsResp = await leadsService.getAllLeads();
-            setLeads(leadsResp);
-            setLoadingLeads(false);
-        } else {
+    const handleFormSubmit = async (e) => {
+        e.preventDefault();
+        setFormError('');
+        setFormSuccess('');
+        if (!form.firstName || !form.lastName || !form.companyID || !form.ownerID) {
+            setFormError('Faltan datos obligatorios: Nombre, Apellido, Empresa y Dueño.');
+            return;
+        }
+        try {
+            // Convierte companyID y ownerID a número
+            const response = await leadsService.createLead({
+                ...form,
+                companyID: Number(form.companyID),
+                ownerID: Number(form.ownerID),
+                nextStep: null,
+                status: null
+            });
+            if (response.ok || response.status === 201) {
+                setFormSuccess('Lead creado exitosamente.');
+                setFormError('');
+                setShowModal(false);
+                setLoadingLeads(true);
+                const leadsResp = await leadsService.getAllLeads();
+                setLeads(leadsResp);
+                setLoadingLeads(false);
+            } else {
+                setFormError('Error al crear el lead.');
+                setFormSuccess('');
+            }
+        } catch (err) {
             setFormError('Error al crear el lead.');
             setFormSuccess('');
         }
-    } catch (err) {
-        setFormError('Error al crear el lead.');
-        setFormSuccess('');
-    }
-};
+    };
+
+    // --- Función para refrescar logs después de agregar o editar uno ---
+    const refetchLogs = async () => {
+        if (!selectedLead) return;
+        setLoadingLogs(true);
+        const logs = await logsService.getLogsByLeadId(selectedLead.id);
+        setLogs(logs);
+        setLoadingLogs(false);
+    };
 
     return (
         <div style={{ display: 'flex', height: '100vh' }}>
@@ -197,7 +216,7 @@ const handleFormSubmit = async (e) => {
                             ))}
                         </select>
                     </div>
-                    {/* --- NUEVO: Botón para abrir modal de agregar lead --- */}
+                    {/* Botón para abrir modal de agregar lead */}
                     <button onClick={handleOpenModal} style={{ marginLeft: '1em', padding: '0.5em 1em' }}>
                         + Agregar Lead
                     </button>
@@ -240,7 +259,7 @@ const handleFormSubmit = async (e) => {
                         </div>
                     ))
                 )}
-                {/* --- NUEVO: Modal para agregar lead --- */}
+                {/* Modal para agregar lead */}
                 {showModal && (
                     <div style={{
                         position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
@@ -315,49 +334,37 @@ const handleFormSubmit = async (e) => {
 
             {/* Columna derecha: Logs */}
             <div style={{ width: '60%', padding: '1em', background: '#17607b22', overflowY: 'auto' }}>
+                {/* Mostrar botón solo si hay un lead seleccionado */}
+                {selectedLead && (
+                    <div style={{ marginBottom: '1em' }}>
+                        <button
+                            onClick={() => setShowLogModal(true)}
+                            className="bg-[#17607b] text-white px-4 py-2 rounded hover:bg-[#10485c] transition"
+                        >
+                            Agregar Log de Contacto
+                        </button>
+                    </div>
+                )}
+                {/* Modal para agregar log */}
+                <LogFormModal
+                    show={showLogModal}
+                    onClose={() => setShowLogModal(false)}
+                    selectedLead={selectedLead}
+                    onLogAdded={refetchLogs}
+                />
+
                 {!selectedLead && (
                     <div style={{ marginBottom: '1em', fontStyle: 'italic' }}>
                         Selecciona un lead para filtrar sus logs.
                     </div>
                 )}
+                {/* Mostrar lista de logs con edición */}
                 {loadingLogs ? <div>Cargando logs...</div> : (
-                    logs.length === 0
-                        ? <div>No hay logs para mostrar.</div>
-                        : logs.map(log => (
-                            <div key={log.id} style={{ border: '1px solid #aaa', borderRadius: '8px', margin: '1em 0', padding: '1em', background: '#fff' }}>
-                                <strong>Tipo:</strong> {log.type} <br />
-                                <strong>Status:</strong> {log.status} <br />
-                                <strong>Nota:</strong> {log.notes || 'N/A'} <br />
-                                <strong>Fecha de creación:</strong> {log.createAt ? new Date(log.createAt).toLocaleString() : 'N/A'} <br />
-                                <strong>Última actualización:</strong> {log.updatedAt ? new Date(log.updatedAt).toLocaleString() : 'N/A'} <br />
-                                <button
-                                    style={{ marginTop: '0.5em', marginBottom: '0.5em' }}
-                                    onClick={() => handleShowHistory(log.id)}
-                                >
-                                    {showHistoryFor === log.id ? 'Ocultar historial' : 'Ver historial'}
-                                </button>
-                                {showHistoryFor === log.id && (
-                                    <div style={{ marginTop: '0.5em', background: '#f5f5f5', padding: '0.5em', borderRadius: '6px' }}>
-                                        {loadingHistory ? (
-                                            <div>Cargando historial...</div>
-                                        ) : (
-                                            history.length === 0
-                                                ? <div>No hay historial para este log.</div>
-                                                : history[0]?.error
-                                                    ? <div>{history[0].error}</div>
-                                                    : history.map(item => (
-                                                        <div key={item.id} style={{ borderBottom: '1px solid #ccc', marginBottom: '0.5em', paddingBottom: '0.5em' }}>
-                                                            <strong>Status:</strong> {item.status} <br />
-                                                            <strong>Nota:</strong> {item.notes || 'N/A'} <br />
-                                                            <strong>Usuario ID:</strong> {item.userID} <br />
-                                                            <strong>Fecha de cambio:</strong> {item.changedAt ? new Date(item.changedAt).toLocaleString() : 'N/A'} <br />
-                                                        </div>
-                                                    ))
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        ))
+                    <ContactLogList
+                        logs={logs}
+                        userID={userID}
+                        onLogUpdated={refetchLogs}
+                    />
                 )}
             </div>
         </div>
