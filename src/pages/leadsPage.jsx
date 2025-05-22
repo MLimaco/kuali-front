@@ -6,6 +6,8 @@ import { companiesService } from '../services/companies.js';
 import LogFormModal from '../components/LogFormModal.jsx';
 // Importa la lista de logs con edición
 import { ContactLogList } from '../components/ContactLogList.jsx';
+// Importa el nuevo componente de gráfico
+import { LogsChart } from '../components/LogsChart.jsx';
 
 // Servicio para obtener usuarios
 const fetchUsers = async () => {
@@ -334,7 +336,7 @@ export const LeadsPage = () => {
 
             {/* Columna derecha: Logs */}
             <div style={{ width: '60%', padding: '1em', background: '#17607b22', overflowY: 'auto' }}>
-                {/* Mostrar botón solo si hay un lead seleccionado */}
+                {/* Botón para agregar log */}
                 {selectedLead && (
                     <div style={{ marginBottom: '1em' }}>
                         <button
@@ -345,6 +347,17 @@ export const LeadsPage = () => {
                         </button>
                     </div>
                 )}
+                
+                {/* Gráfico de logs por tipo */}
+                <div style={{ marginBottom: '2em' }}>
+                    {!loadingLogs && (
+                        <LogsChart 
+                            logs={logs}
+                            selectedLead={selectedLead}
+                        />
+                    )}
+                </div>
+
                 {/* Modal para agregar log */}
                 <LogFormModal
                     show={showLogModal}
@@ -358,7 +371,8 @@ export const LeadsPage = () => {
                         Selecciona un lead para filtrar sus logs.
                     </div>
                 )}
-                {/* Mostrar lista de logs con edición */}
+                
+                {/* Lista de logs con edición */}
                 {loadingLogs ? <div>Cargando logs...</div> : (
                     <ContactLogList
                         logs={logs}
